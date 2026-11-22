@@ -8,14 +8,18 @@
 <title>lullabye</title>
 <style>
 html, body { margin: 0; height: 100%; background: #000; cursor: none; }
+body { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 video { position: fixed; width: 1px; height: 1px; }
-p { display: none; position: fixed; top: 50%; width: 100%; margin: 0; transform: translateY(-50%); text-align: center; color: #888; font: 16px/1.5 sans-serif; }
-.off p { display: block; }
+p, pre { position: fixed; margin: 0; color: #888; font: 16px/1.5 sans-serif; }
+p { display: none; top: 50%; width: 100%; transform: translateY(-50%); text-align: center; }
+pre { display: none; bottom: 16px; left: 16px; right: 16px; white-space: pre-wrap; }
+.off p, .log pre { display: block; }
 </style>
 </head>
 <body>
 <video src="blank.mp4" muted loop playsinline></video>
 <p>Click or tap anywhere to keep the screen awake.<br>This text disappears once it's working.</p>
+<pre></pre>
 <script>
 const video = document.querySelector('video');
 const native = 'wakeLock' in navigator;
@@ -57,6 +61,60 @@ document.addEventListener('visibilitychange', acquire);
 addEventListener('pointerdown', acquire);
 addEventListener('keydown', acquire);
 acquire();
+
+const trail = document.querySelector('pre');
+const stamp = time => new Date(time).toString().slice(4, 24);
+const count = (n, word) => n > 0 && `${n} ${word}${n > 1 ? 's' : ''}`;
+let log = [];
+try { log = JSON.parse(localStorage.activity) || []; } catch {}
+
+function describe(stretch) {
+  const what = [
+    stretch.opened && 'opened the page',
+    stretch.mouse > 0 && 'moved the mouse',
+    count(stretch.clicks, 'click'),
+    count(stretch.keys, 'key'),
+    stretch.scroll > 0 && 'scrolled',
+  ].filter(Boolean).join(', ');
+  return `${stamp(stretch.start)} – ${stamp(stretch.end).slice(-8)}  ${what}`;
+}
+
+function save() {
+  try { localStorage.activity = JSON.stringify(log); } catch {}
+  trail.textContent = log.slice(-10).map(describe).join('\n');
+}
+
+function begin(opened) {
+  const now = Date.now();
+  log = [...log, { start: now, end: now, opened, mouse: 0, clicks: 0, keys: 0, scroll: 0 }].slice(-100);
+}
+
+function record(kind) {
+  if (Date.now() - log[log.length - 1].end > 30000) begin(false);
+  const stretch = log[log.length - 1];
+  const before = describe(stretch);
+  stretch.end = Date.now();
+  stretch[kind]++;
+  if (describe(stretch) !== before) save();
+}
+
+begin(true);
+save();
+
+addEventListener('mousemove', () => record('mouse'));
+addEventListener('pointerdown', () => record('clicks'));
+addEventListener('keydown', () => record('keys'));
+addEventListener('wheel', () => record('scroll'));
+
+let press;
+
+addEventListener('pointerdown', () => {
+  clearTimeout(press);
+  press = setTimeout(() => document.body.classList.toggle('log'), 1000);
+});
+addEventListener('pointerup', () => clearTimeout(press));
+addEventListener('pointercancel', () => clearTimeout(press));
+addEventListener('contextmenu', event => event.preventDefault());
 
 addEventListener('dblclick', () => {
   if (document.fullscreenElement) document.exitFullscreen();
