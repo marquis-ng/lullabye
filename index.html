@@ -57,6 +57,11 @@ document.addEventListener('visibilitychange', acquire);
 addEventListener('pointerdown', acquire);
 addEventListener('keydown', acquire);
 acquire();
+
+addEventListener('dblclick', () => {
+  if (document.fullscreenElement) document.exitFullscreen();
+  else document.documentElement.requestFullscreen?.().catch(() => {});
+});
 </script>
 </body>
 </html>
