@@ -8,14 +8,24 @@
 <title>lullabye</title>
 <style>
 html, body { margin: 0; height: 100%; background: #000; }
+video { position: fixed; width: 1px; height: 1px; }
 </style>
 </head>
 <body>
+<video src="blank.mp4" muted loop playsinline></video>
 <script>
+const video = document.querySelector('video');
+
+video.addEventListener('timeupdate', () => {
+  if (video.currentTime > 0.5) video.currentTime = Math.random();
+});
+
 let lock = null;
 
 async function acquire() {
-  if (lock || document.visibilityState !== 'visible' || !('wakeLock' in navigator)) return;
+  if (document.visibilityState !== 'visible') return;
+  video.play().catch(() => {});
+  if (lock || !('wakeLock' in navigator)) return;
   try {
     lock = await navigator.wakeLock.request('screen');
     lock.addEventListener('release', () => {
