@@ -11,5 +11,24 @@ html, body { margin: 0; height: 100%; background: #000; }
 </style>
 </head>
 <body>
+<script>
+let lock = null;
+
+async function acquire() {
+  if (lock || document.visibilityState !== 'visible' || !('wakeLock' in navigator)) return;
+  try {
+    lock = await navigator.wakeLock.request('screen');
+    lock.addEventListener('release', () => {
+      lock = null;
+      acquire();
+    });
+  } catch {}
+}
+
+document.addEventListener('visibilitychange', acquire);
+addEventListener('pointerdown', acquire);
+addEventListener('keydown', acquire);
+acquire();
+</script>
 </body>
 </html>
