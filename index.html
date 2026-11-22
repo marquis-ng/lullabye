@@ -9,30 +9,48 @@
 <style>
 html, body { margin: 0; height: 100%; background: #000; cursor: none; }
 video { position: fixed; width: 1px; height: 1px; }
+p { display: none; position: fixed; top: 50%; width: 100%; margin: 0; transform: translateY(-50%); text-align: center; color: #888; font: 16px/1.5 sans-serif; }
+.off p { display: block; }
 </style>
 </head>
 <body>
 <video src="blank.mp4" muted loop playsinline></video>
+<p>Click or tap anywhere to keep the screen awake.<br>This text disappears once it's working.</p>
 <script>
 const video = document.querySelector('video');
+const native = 'wakeLock' in navigator;
+
+function show(working) {
+  document.body.classList.toggle('off', !working);
+}
 
 video.addEventListener('timeupdate', () => {
   if (video.currentTime > 0.5) video.currentTime = Math.random();
 });
 
+if (!native) {
+  video.addEventListener('playing', () => show(true));
+  video.addEventListener('pause', () => show(false));
+}
+
 let lock = null;
 
 async function acquire() {
   if (document.visibilityState !== 'visible') return;
-  video.play().catch(() => {});
-  if (lock || !('wakeLock' in navigator)) return;
+  video.play().catch(() => {
+    if (!native) show(false);
+  });
+  if (lock || !native) return;
   try {
     lock = await navigator.wakeLock.request('screen');
     lock.addEventListener('release', () => {
       lock = null;
       acquire();
     });
-  } catch {}
+    show(true);
+  } catch {
+    show(false);
+  }
 }
 
 document.addEventListener('visibilitychange', acquire);
